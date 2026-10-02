@@ -11,54 +11,48 @@ $role = $_SESSION['role'];
 $user_id = $_SESSION['user_id'];
 
 if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send_request'])){
-    $property_id = intval($_POST['property_id']);
+    $property_id = $_POST['property_id'];
     $issue = $_POST['issue'];
 
-    $stmt = mysqli_prepare($conn, "INSERT INTO maintenance 
+    $query = "INSERT INTO maintenance 
               (tenant_id, property_id, issue, status) 
-              VALUES (?, ?, ?, 'pending')");
-    mysqli_stmt_bind_param($stmt, "iis", $user_id, $property_id, $issue);
+              VALUES 
+              ('$user_id','$property_id','$issue','pending')";
     
-    if(mysqli_stmt_execute($stmt)){
+    if(mysqli_query($conn, $query)){
         echo "<script>alert('Maintenance Request Sent!'); window.location.href='maintenance.php';</script>";
     }
 }
 
 if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])){
-    $request_id = intval($_POST['request_id']);
+    $request_id = $_POST['request_id'];
     $status = $_POST['status'];
 
-    // Only allow expected status values
-    $allowed_statuses = ['pending', 'in_progress', 'completed'];
-    if(in_array($status, $allowed_statuses)){
-        $stmt = mysqli_prepare($conn, "UPDATE maintenance 
-                  SET status=? 
-                  WHERE id=?");
-        mysqli_stmt_bind_param($stmt, "si", $status, $request_id);
-        
-        if(mysqli_stmt_execute($stmt)){
-            echo "<script>alert('Status Updated!'); window.location.href='maintenance.php';</script>";
-        }
+    $query = "UPDATE maintenance 
+              SET status='$status' 
+              WHERE id='$request_id'";
+    
+    if(mysqli_query($conn, $query)){
+        echo "<script>alert('Status Updated!'); window.location.href='maintenance.php';</script>";
     }
 }
 
 if($role == 'tenant'){
-    $stmt = mysqli_prepare($conn, "SELECT m.*, p.title, p.location 
+    $query = "SELECT m.*, p.title, p.location 
               FROM maintenance m 
               JOIN properties p ON m.property_id = p.id
-              WHERE m.tenant_id = ?
-              ORDER BY m.created_at DESC");
-    mysqli_stmt_bind_param($stmt, "i", $user_id);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
+              WHERE m.tenant_id = '$user_id'
+              ORDER BY m.created_at DESC";
 } else {
-    $result = mysqli_query($conn, "SELECT m.*, p.title, p.location,
+    $query = "SELECT m.*, p.title, p.location,
               u.first_name, u.last_name
               FROM maintenance m 
               JOIN properties p ON m.property_id = p.id
               JOIN users u ON m.tenant_id = u.id
-              ORDER BY m.created_at DESC");
+              ORDER BY m.created_at DESC";
 }
+
+$result = mysqli_query($conn, $query);
 $properties = mysqli_query($conn, "SELECT * FROM properties");
 ?>
 
@@ -214,7 +208,7 @@ $properties = mysqli_query($conn, "SELECT * FROM properties");
                     <option value="">Select Property</option>
                     <?php while($p = mysqli_fetch_assoc($properties)): ?>
                     <option value="<?php echo $p['id']; ?>">
-                        <?php echo htmlspecialchars($p['title'].' - '.$p['location']); ?>
+                        <?php echo $p['title'].' - '.$p['location']; ?>
                     </option>
                     <?php endwhile; ?>
                 </select>
@@ -234,11 +228,11 @@ $properties = mysqli_query($conn, "SELECT * FROM properties");
             <?php if($result && mysqli_num_rows($result) > 0): ?>
                 <?php while($row = mysqli_fetch_assoc($result)): ?>
                 <div class="card">
-                    <h3><?php echo htmlspecialchars($row['issue']); ?></h3>
+                    <h3><?php echo $row['issue']; ?></h3>
                     <?php if($role != 'tenant'): ?>
-                    <p>👤 <?php echo htmlspecialchars($row['first_name'].' '.$row['last_name']); ?></p>
+                    <p>👤 <?php echo $row['first_name'].' '.$row['last_name']; ?></p>
                     <?php endif; ?>
-                    <p>🏠 <?php echo htmlspecialchars($row['title'].', '.$row['location']); ?></p>
+                    <p>🏠 <?php echo $row['title'].', '.$row['location']; ?></p>
                     <p>📅 <?php echo date('Y-m-d', strtotime($row['created_at'])); ?></p>
 
                     <div class="progress-bar">
